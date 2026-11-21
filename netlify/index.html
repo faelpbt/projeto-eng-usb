@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo de redesign: consulta ao extrato</title>
+<style>
+  :root{
+    --texto:#0F1B3D;        /* 16,9:1 sobre branco */
+    --secundario:#4F5D78;   /* 6,9:1 sobre branco */
+    --primario:#0B3FA8;     /* 9,2:1 com texto branco */
+    --escuro:#0A2463;
+    --claro:#EAF0FD;
+    --fundo:#F6F8FC;
+    --card:#FFFFFF;
+    --linha:#E3E8F2;
+    --aviso-bg:#FFF1CC;
+    --aviso-tx:#6B4700;
+    --ok:#0B6B2E;
+    --erro:#B3261E;
+    --foco:#FFB000;
+    --sombra:0 1px 2px rgba(15,27,61,.06),0 8px 24px rgba(15,27,61,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:"Segoe UI",Roboto,Inter,Arial,sans-serif;font-size:18px;line-height:1.4;color:var(--texto);
+       background:#E7ECF6;display:flex;justify-content:center;align-items:center}
+  .celular{width:380px;height:800px;max-height:100vh;background:var(--fundo);position:relative;overflow:hidden;display:flex;flex-direction:column;
+           border-radius:36px;box-shadow:0 0 0 9px #1B2440,0 30px 60px rgba(15,27,61,.25)}
+  @media (max-width:440px){.celular{width:100vw;height:100vh;max-height:none;border-radius:0;box-shadow:none}}
+  .tela{display:none;flex-direction:column;height:100%;overflow-y:auto;scrollbar-width:none}
+  .tela::-webkit-scrollbar{display:none}
+  .tela.ativa{display:flex;animation:entra .25s ease-out}
+  @keyframes entra{from{opacity:0}to{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.tela.ativa{animation:none}}
+  svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  svg.i.g{width:28px;height:28px}
+  button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button:focus-visible,input:focus-visible{outline:4px solid var(--foco);outline-offset:2px}
+
+  /* Estrutura */
+  .corpo{padding:8px 20px 20px;flex:1;display:flex;flex-direction:column}
+  h1{margin:0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-.3px}
+  h2{font-size:18px;margin:22px 0 10px;font-weight:700;color:var(--secundario)}
+  .sub{margin:8px 0 0;color:var(--secundario)}
+  .topbar{display:flex;align-items:center;gap:14px;padding:22px 20px 10px}
+  .avatar{width:48px;height:48px;border-radius:50%;background:var(--claro);color:var(--primario);display:grid;place-items:center;flex:none}
+  .topbar .nome{font-size:22px;font-weight:700;line-height:1.1}
+  .topbar .conta{color:var(--secundario);font-size:16px}
+
+  /* Tela 1 */
+  .abertura{text-align:center;padding:36px 20px 8px}
+  .logo{width:68px;height:68px;border-radius:20px;background:var(--primario);color:#fff;display:grid;place-items:center;margin:0 auto 18px;box-shadow:0 10px 20px rgba(11,63,168,.3)}
+  .logo svg.i{width:34px;height:34px}
+  .cartao-conta{width:100%;min-height:88px;display:flex;align-items:center;gap:14px;background:var(--card);border:2px solid var(--linha);border-radius:18px;padding:12px 14px;margin-bottom:12px;text-align:left;box-shadow:var(--sombra);transition:border-color .12s,background .12s}
+  .cartao-conta[aria-pressed="true"]{border-color:var(--primario);background:var(--claro)}
+  .chip{width:48px;height:48px;border-radius:14px;background:var(--claro);color:var(--primario);display:grid;place-items:center;flex:none}
+  .cartao-conta .nome{display:block;font-size:20px;font-weight:700}
+  .cartao-conta .final{display:block;color:var(--secundario);font-size:16px}
+  .cartao-conta .seta{margin-left:auto;color:var(--secundario)}
+  .acoes-base{margin-top:auto;padding-top:16px}
+  label{display:block;font-weight:700;margin:14px 0 8px}
+  .campo{display:flex;gap:10px}
+  input[type=password],input[type=text]{flex:1;min-width:0;min-height:56px;font-size:22px;padding:8px 14px;border:2px solid var(--secundario);border-radius:14px;background:#fff;color:var(--texto);letter-spacing:3px}
+
+  /* Botões */
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:56px;border-radius:16px;font-weight:700;font-size:19px;border:2px solid var(--primario);margin-top:12px;padding:8px 16px;transition:transform .1s}
+  .btn:active{transform:scale(.98)}
+  .btn.principal{background:var(--primario);color:#fff}
+  .btn.contorno{background:#fff;color:var(--primario)}
+  .btn.texto{border-color:transparent;background:transparent;color:var(--primario)}
+  .btn.pequeno{width:auto;min-height:48px;font-size:17px;margin:0;white-space:nowrap;border-radius:14px;padding:6px 14px}
+  .btn.claro{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.7)}
+
+  /* Tela 2 */
+  .hero{background:linear-gradient(150deg,var(--escuro),var(--primario));color:#fff;border-radius:24px;padding:20px;box-shadow:0 14px 28px rgba(10,36,99,.25)}
+  .hero .rotulo{margin:0;font-size:17px;opacity:.95}
+  .hero .valor{margin:4px 0 0;font-size:40px;font-weight:700;letter-spacing:-1px}
+  .saldo{background:var(--card);border-radius:20px;padding:16px;margin-top:12px;box-shadow:var(--sombra)}
+  .saldo .rotulo{color:var(--secundario);margin:0;font-size:17px}
+  .saldo .valor{font-size:28px;font-weight:700;margin:2px 0 0}
+  .aviso{display:flex;gap:10px;align-items:flex-start;background:var(--aviso-bg);color:var(--aviso-tx);border-radius:12px;padding:10px 12px;margin:10px 0 0;font-size:17px;font-weight:600}
+  .aviso svg{margin-top:2px}
+  .aviso.ok{background:#DDF4E4;color:#0A4F22}
+  .rapidos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .rapidos button{background:var(--card);border:2px solid var(--linha);border-radius:18px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:700;padding:8px 4px;box-shadow:var(--sombra)}
+
+  /* Barra inferior */
+  nav.abas{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid var(--linha);padding:6px 6px 12px}
+  nav.abas button{background:none;border:0;min-height:60px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:15px;font-weight:600;color:var(--secundario)}
+  nav.abas button[aria-current="page"]{color:var(--primario);background:var(--claro)}
+  nav.abas button.extrato{color:var(--primario);font-weight:700}
+
+  /* Tela 3: lista */
+  .lista{display:flex;flex-direction:column;gap:10px}
+  .item{width:100%;min-height:68px;display:flex;align-items:center;gap:14px;background:var(--card);border:2px solid var(--linha);border-radius:18px;padding:10px 14px;text-align:left;font-size:20px;font-weight:600;box-shadow:var(--sombra)}
+  .item .seta{margin-left:auto;color:var(--secundario)}
+  .item.destaque{background:var(--primario);border-color:var(--primario);color:#fff;min-height:76px;font-size:22px;font-weight:700}
+  .item.destaque .chip{background:rgba(255,255,255,.18);color:#fff}
+  .item.destaque .seta{color:#fff}
+
+  footer.rodape{padding:12px 20px 18px;background:#fff;border-top:1px solid var(--linha)}
+  footer.rodape .btn{margin-top:0}
+  .extrato-item{display:flex;justify-content:space-between;align-items:center;background:var(--card);border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:var(--sombra);font-weight:600}
+  .entrada{color:var(--ok);font-weight:700}
+  .saida{color:var(--erro);font-weight:700}
+  .mes-ref{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:2px solid var(--primario);border-radius:20px;padding:10px;box-shadow:var(--sombra)}
+  .mes-ref .centro{text-align:center;flex:1}
+  .mes-ref .rot{display:block;color:var(--secundario);font-size:16px}
+  .mes-ref strong{display:block;font-size:22px;line-height:1.2}
+  .mes-ref .tag{display:inline-block;margin-top:4px;background:var(--claro);color:var(--primario);border-radius:999px;padding:2px 12px;font-size:15px;font-weight:700}
+  .seta-mes{width:52px;height:52px;border-radius:16px;border:2px solid var(--primario);background:#fff;color:var(--primario);display:grid;place-items:center;flex:none}
+  .seta-mes:disabled{border-color:var(--linha);color:#8A94AB;cursor:not-allowed}
+  .meses{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .meses button{min-height:52px;border-radius:14px;border:2px solid var(--linha);background:#fff;font-size:18px;font-weight:600;padding:6px 8px}
+  .meses button[aria-pressed="true"]{background:var(--primario);border-color:var(--primario);color:#fff;font-weight:700}
+  .total-mes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px}
+  .total-mes div{background:var(--card);border-radius:16px;padding:10px 12px;box-shadow:var(--sombra)}
+  .total-mes span{display:block;color:var(--secundario);font-size:16px}
+  .total-mes b{font-size:20px}
+  dialog{border:0;border-radius:24px;padding:22px;width:min(320px,90%);color:var(--texto);box-shadow:0 20px 50px rgba(15,27,61,.4)}
+  dialog::backdrop{background:rgba(15,27,61,.55)}
+  dialog h2{margin:0 0 8px;color:var(--texto);font-size:22px}
+  .nota{font-size:16px;color:var(--secundario);margin:8px 0 0}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></symbol>
+    <symbol id="i-dollar" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
+    <symbol id="i-finger" viewBox="0 0 24 24"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+    <symbol id="i-pix" viewBox="0 0 24 24"><path d="M12 2l10 10-10 10L2 12z"/><path d="M12 7l5 5-5 5-5-5z"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  </defs>
+</svg>
+
+<div class="celular">
+
+  <!-- TELA 1: ENTRAR NA CONTA -->
+  <section id="tela1" class="tela ativa" aria-labelledby="t1">
+    <div class="abertura">
+      <div class="logo" aria-hidden="true"><svg class="i"><use href="#i-shield"/></svg></div>
+      <h1 id="t1">Entrar na conta</h1>
+      <p class="sub">Toque na sua conta e digite sua senha.</p>
+    </div>
+    <div class="corpo">
+      <button class="cartao-conta" aria-pressed="false" data-conta="Conta Corrente">
+        <span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-wallet"/></svg></span>
+        <span><span class="nome">Conta Corrente</span><span class="final">final 0000</span></span>
+        <span class="seta" aria-hidden="true"><svg class="i g"><use href="#i-chev"/></svg></span>
+      </button>
+      <button class="cartao-conta" aria-pressed="false" data-conta="Poupança">
+        <span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-dollar"/></svg></span>
+        <span><span class="nome">Poupança</span><span class="final">final 0000</span></span>
+        <span class="seta" aria-hidden="true"><svg class="i g"><use href="#i-chev"/></svg></span>
+      </button>
+
+      <div id="blocoSenha" hidden>
+        <label for="senha">Sua senha</label>
+        <div class="campo">
+          <input id="senha" type="password" inputmode="numeric" autocomplete="off" aria-describedby="dicaSenha">
+          <button class="btn contorno pequeno" id="mostrarSenha" type="button" aria-pressed="false">Mostrar</button>
+        </div>
+        <p id="dicaSenha" class="nota">Neste protótipo, qualquer senha entra.</p>
+        <button class="btn principal" id="entrar" type="button">Entrar</button>
+        <p id="erroSenha" class="aviso" role="alert" hidden><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><span>Digite sua senha para entrar.</span></p>
+      </div>
+
+      <div class="acoes-base">
+        <button class="btn contorno" id="digital" type="button"><svg class="i" aria-hidden="true"><use href="#i-finger"/></svg> Entrar com a digital</button>
+        <button class="btn texto" id="ajuda" type="button"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg> Preciso de ajuda</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TELA 2: INÍCIO -->
+  <section id="tela2" class="tela" aria-labelledby="t2">
+    <div class="topbar">
+      <span class="avatar" aria-hidden="true"><svg class="i g"><use href="#i-user"/></svg></span>
+      <div>
+        <h1 id="t2" class="nome" style="font-size:22px">Olá, Maria</h1>
+        <div class="conta">Conta Corrente</div>
+      </div>
+    </div>
+    <div class="corpo">
+      <div class="hero">
+        <p class="rotulo">Saldo da conta</p>
+        <p class="valor" data-valor="R$ 0,00">R$ 0,00</p>
+        <button class="btn claro pequeno" id="olho" type="button" aria-pressed="false" style="margin-top:14px"><svg class="i" aria-hidden="true" id="olhoIcone"><use href="#i-eye"/></svg> <span id="olhoTexto">Esconder valores</span></button>
+      </div>
+      <div class="saldo">
+        <p class="rotulo">Posso usar agora</p>
+        <p class="valor" data-valor="-R$ 39,80">-R$ 39,80</p>
+        <p class="aviso"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><span>Você está usando R$ 39,80 do limite da conta.</span></p>
+      </div>
+
+      <button class="btn principal" id="verExtrato" type="button" style="min-height:64px;font-size:21px;margin-top:16px"><svg class="i g" aria-hidden="true"><use href="#i-doc"/></svg> Ver extrato</button>
+
+      <h2>Mais usados</h2>
+      <div class="rapidos">
+        <button type="button"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-pix"/></svg></span>Pix</button>
+        <button type="button"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-receipt"/></svg></span>Pagar</button>
+        <button type="button"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-card"/></svg></span>Cartão</button>
+      </div>
+    </div>
+    <nav class="abas" aria-label="Navegação principal">
+      <button type="button" aria-current="page"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg>Início</button>
+      <button type="button" class="extrato" id="navExtrato"><svg class="i" aria-hidden="true"><use href="#i-doc"/></svg>Extrato</button>
+      <button type="button"><svg class="i" aria-hidden="true"><use href="#i-pix"/></svg>Pix</button>
+      <button type="button" id="abrirMenu"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg>Menu</button>
+    </nav>
+  </section>
+
+  <!-- TELA 3: MENU -->
+  <section id="tela3" class="tela" aria-labelledby="t3">
+    <div class="abertura" style="text-align:left;padding:28px 20px 8px">
+      <h1 id="t3">O que você quer fazer?</h1>
+      <p class="sub">Escolha uma opção.</p>
+    </div>
+    <div class="corpo">
+      <div class="lista">
+        <button type="button" class="item destaque" id="menuExtrato"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-doc"/></svg></span>Extrato<span class="seta" aria-hidden="true"><svg class="i"><use href="#i-chev"/></svg></span></button>
+        <button type="button" class="item"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-repeat"/></svg></span>Transferir<span class="seta" aria-hidden="true"><svg class="i"><use href="#i-chev"/></svg></span></button>
+        <button type="button" class="item"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-receipt"/></svg></span>Pagar contas<span class="seta" aria-hidden="true"><svg class="i"><use href="#i-chev"/></svg></span></button>
+        <button type="button" class="item"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-pix"/></svg></span>Pix<span class="seta" aria-hidden="true"><svg class="i"><use href="#i-chev"/></svg></span></button>
+        <button type="button" class="item"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-card"/></svg></span>Cartão<span class="seta" aria-hidden="true"><svg class="i"><use href="#i-chev"/></svg></span></button>
+        <button type="button" class="item ajudaMenu"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-help"/></svg></span>Ajuda<span class="seta" aria-hidden="true"><svg class="i"><use href="#i-chev"/></svg></span></button>
+        <button type="button" class="item"><span class="chip" aria-hidden="true"><svg class="i g"><use href="#i-lock"/></svg></span>Segurança<span class="seta" aria-hidden="true"><svg class="i"><use href="#i-chev"/></svg></span></button>
+      </div>
+    </div>
+    <footer class="rodape">
+      <button class="btn contorno" id="voltarInicio" type="button"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg> Voltar ao início</button>
+    </footer>
+  </section>
+
+  <!-- FIM DA TAREFA: EXTRATO (apenas para encerrar o fluxo) -->
+  <section id="telaFim" class="tela" aria-labelledby="tf">
+    <div class="abertura" style="text-align:left;padding:28px 20px 8px">
+      <h1 id="tf">Extrato</h1>
+      <p class="sub">Últimos lançamentos</p>
+    </div>
+    <div class="corpo">
+      <div class="mes-ref">
+        <button type="button" class="seta-mes" id="mesAnt" aria-label="Mês anterior"><svg class="i g" aria-hidden="true" style="transform:rotate(180deg)"><use href="#i-chev"/></svg></button>
+        <div class="centro">
+          <span class="rot">Mês de referência</span>
+          <strong id="mesNome" aria-live="polite">Novembro de 2026</strong>
+          <span class="tag" id="mesTag">Mês atual</span>
+        </div>
+        <button type="button" class="seta-mes" id="mesProx" aria-label="Próximo mês"><svg class="i g" aria-hidden="true"><use href="#i-chev"/></svg></button>
+      </div>
+
+      <div class="total-mes" aria-live="polite">
+        <div><span>Entrou</span><b class="entrada" id="totEntrada">R$ 0,00</b></div>
+        <div><span>Saiu</span><b class="saida" id="totSaida">R$ 0,00</b></div>
+      </div>
+      <div id="lancamentos"></div>
+
+      <h2>Ver outros meses</h2>
+      <div class="meses" id="meses"></div>
+
+      <p class="aviso ok"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg><span>Você chegou ao extrato. Fim da tarefa.</span></p>
+      <p class="nota">Tela de apoio do protótipo, fora das 3 telas redesenhadas. Valores fictícios.</p>
+    </div>
+    <footer class="rodape">
+      <button class="btn contorno" id="reiniciar" type="button">Voltar ao início do teste</button>
+    </footer>
+  </section>
+
+  <dialog id="dlgAjuda" aria-labelledby="dlgTitulo">
+    <h2 id="dlgTitulo">Precisa de ajuda?</h2>
+    <p>Ligue para a central do banco ou peça a uma pessoa de confiança para ficar ao seu lado.</p>
+    <button class="btn principal" id="fecharAjuda" type="button">Entendi</button>
+  </dialog>
+</div>
+
+<script>
+(function(){
+  var telas=['tela1','tela2','tela3','telaFim'];
+  function ir(id){
+    telas.forEach(function(t){document.getElementById(t).classList.toggle('ativa',t===id)});
+    var el=document.getElementById(id); el.scrollTop=0;
+    var h=el.querySelector('h1'); if(h){h.setAttribute('tabindex','-1'); h.focus({preventScroll:true});}
+  }
+  var cartoes=document.querySelectorAll('.cartao-conta');
+  cartoes.forEach(function(c){c.addEventListener('click',function(){
+    cartoes.forEach(function(x){x.setAttribute('aria-pressed','false')});
+    c.setAttribute('aria-pressed','true');
+    document.getElementById('blocoSenha').hidden=false;
+    document.getElementById('senha').focus();
+  })});
+  document.getElementById('mostrarSenha').addEventListener('click',function(){
+    var i=document.getElementById('senha'),b=this,v=i.type==='password';
+    i.type=v?'text':'password'; b.textContent=v?'Esconder':'Mostrar'; b.setAttribute('aria-pressed',v);
+  });
+  function entrar(){
+    var s=document.getElementById('senha').value, erro=document.getElementById('erroSenha');
+    if(!s){erro.hidden=false;document.getElementById('senha').focus();return;}
+    erro.hidden=true; ir('tela2');
+  }
+  document.getElementById('entrar').addEventListener('click',entrar);
+  document.getElementById('senha').addEventListener('keydown',function(e){if(e.key==='Enter')entrar()});
+  document.getElementById('digital').addEventListener('click',function(){ir('tela2')});
+  var dlg=document.getElementById('dlgAjuda');
+  document.getElementById('ajuda').addEventListener('click',function(){dlg.showModal()});
+  document.querySelectorAll('.ajudaMenu').forEach(function(b){b.addEventListener('click',function(){dlg.showModal()})});
+  document.getElementById('fecharAjuda').addEventListener('click',function(){dlg.close()});
+  document.getElementById('olho').addEventListener('click',function(){
+    var oculto=!(this.getAttribute('aria-pressed')==='true');
+    this.setAttribute('aria-pressed',oculto);
+    document.getElementById('olhoTexto').textContent=oculto?'Mostrar valores':'Esconder valores';
+    document.querySelector('#olhoIcone use').setAttribute('href',oculto?'#i-eyeoff':'#i-eye');
+    document.querySelectorAll('[data-valor]').forEach(function(v){v.textContent=oculto?'R$ ••••':v.getAttribute('data-valor')});
+  });
+  /* Extrato por mês (dados fictícios) */
+  var MESES=[
+    {n:'Maio de 2026',c:'Maio',l:[['Aposentadoria',1412,1],['Mercado',-286.5,0],['Conta de luz',-98.3,0]]},
+    {n:'Junho de 2026',c:'Junho',l:[['Aposentadoria',1412,1],['Farmácia',-74.9,0],['Conta de água',-45,0]]},
+    {n:'Julho de 2026',c:'Julho',l:[['Aposentadoria',1412,1],['Venda de doces',320,1],['Mercado',-301.2,0]]},
+    {n:'Agosto de 2026',c:'Agosto',l:[['Aposentadoria',1412,1],['Conta de luz',-104.7,0],['Tarifa da conta',-12,0]]},
+    {n:'Setembro de 2026',c:'Setembro',l:[['Aposentadoria',1412,1],['Venda de doces',210,1],['Farmácia',-89.9,0]]},
+    {n:'Outubro de 2026',c:'Outubro',l:[['Aposentadoria',1412,1],['Mercado',-318.4,0],['Tarifa da conta',-12,0]]},
+    {n:'Novembro de 2026',c:'Novembro',l:[['Aposentadoria',1412,1],['Conta de luz',-110.2,0],['Tarifa da conta',-12,0]]}
+  ];
+  var atual=MESES.length-1;
+  function brl(v){return 'R$ '+Math.abs(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+  function mostraMes(i){
+    atual=i; var m=MESES[i], ent=0, sai=0, html='';
+    m.l.forEach(function(x){
+      if(x[1]>0){ent+=x[1]}else{sai+=x[1]}
+      html+='<div class="extrato-item"><span>'+x[0]+'</span><span class="'+(x[1]>0?'entrada':'saida')+'">'+(x[1]>0?'+ ':'- ')+brl(x[1])+'</span></div>';
+    });
+    document.getElementById('lancamentos').innerHTML=html;
+    document.getElementById('mesNome').textContent=m.n;
+    document.getElementById('mesTag').textContent=(i===MESES.length-1)?'Mês atual':'Mês anterior';
+    document.getElementById('totEntrada').textContent=brl(ent);
+    document.getElementById('totSaida').textContent=brl(sai);
+    document.getElementById('mesAnt').disabled=(i===0);
+    document.getElementById('mesProx').disabled=(i===MESES.length-1);
+    document.querySelectorAll('#meses button').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.i==i)});
+  }
+  var cont=document.getElementById('meses');
+  for(var k=MESES.length-2;k>=0;k--){
+    var b=document.createElement('button'); b.type='button'; b.dataset.i=k; b.textContent=MESES[k].c; b.setAttribute('aria-pressed','false');
+    b.addEventListener('click',function(){mostraMes(+this.dataset.i)}); cont.appendChild(b);
+  }
+  document.getElementById('mesAnt').addEventListener('click',function(){if(atual>0)mostraMes(atual-1)});
+  document.getElementById('mesProx').addEventListener('click',function(){if(atual<MESES.length-1)mostraMes(atual+1)});
+  mostraMes(MESES.length-1);
+
+  document.getElementById('verExtrato').addEventListener('click',function(){ir('telaFim')});
+  document.getElementById('navExtrato').addEventListener('click',function(){ir('telaFim')});
+  document.getElementById('abrirMenu').addEventListener('click',function(){ir('tela3')});
+  document.getElementById('menuExtrato').addEventListener('click',function(){ir('telaFim')});
+  document.getElementById('voltarInicio').addEventListener('click',function(){ir('tela2')});
+  document.getElementById('reiniciar').addEventListener('click',function(){
+    document.getElementById('senha').value=''; document.getElementById('blocoSenha').hidden=true;
+    cartoes.forEach(function(x){x.setAttribute('aria-pressed','false')}); ir('tela1');
+  });
+  /* Atalhos por endereço: #tela1, #tela2, #tela3, #extrato (úteis para tirar prints) */
+  var rotas={'#tela1':'tela1','#tela2':'tela2','#tela3':'tela3','#extrato':'telaFim'};
+  if(rotas[location.hash]) ir(rotas[location.hash]);
+})();
+</script>
+</body>
+</html>
